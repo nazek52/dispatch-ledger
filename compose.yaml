@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: dispatchledger
+      POSTGRES_USER: dispatchledger
+      POSTGRES_PASSWORD: local-demo-only
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dispatchledger -d dispatchledger"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: confluentinc/cp-kafka:7.8.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+  api:
+    build: .
+    environment:
+      ConnectionStrings__Postgres: Host=db;Database=dispatchledger;Username=dispatchledger;Password=local-demo-only
+      Kafka__BootstrapServers: kafka:29092
+    ports:
+      - "127.0.0.1:8088:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+volumes:
+  postgres_data:

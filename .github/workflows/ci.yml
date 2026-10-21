@@ -1,0 +1,17 @@
+name: Verify
+on:
+  push:
+  pull_request:
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build src/DispatchLedger.Api/DispatchLedger.Api.csproj -c Release
+      - run: docker compose up -d --build
+      - run: python3 scripts/smoke.py
+      - if: always()
+        run: docker compose down
