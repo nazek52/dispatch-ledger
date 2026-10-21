@@ -26,7 +26,7 @@ for _ in range(90):
     try:
         if request("GET", "/health")[0] == 200:
             break
-    except (urllib.error.URLError, TimeoutError):
+    except OSError:
         pass
     time.sleep(2)
 else:
